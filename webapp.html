@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Randomized Chess Game</title>
+  <style>
+    /* 1. Board styling */
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
+      border: 2px solid #333;
+      margin: 20px auto;
+      width: 480px;
+      height: 480px;
+    }
+    .square {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    .light { background-color: #f0d9b5; }
+    .dark  { background-color: #b58863; }
+    /* 2. Piece styling (increased size + pop shadow) */
+    .piece {
+      font-size: 48px;
+      cursor: grab;
+      user-select: none;
+      color: #000;
+      text-shadow: 0 2px 2px rgba(0,0,0,0.3);
+    }
+    /* 3. Turn indicator */
+    #turnInfo {
+      text-align: center;
+      font-family: sans-serif;
+      margin-top: 12px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div id="board"></div>
+  <div id="turnInfo"></div>
+  <script>
+    (function(){
+      const boardEl = document.getElementById('board');
+      const turnInfo = document.getElementById('turnInfo');
+      let currentTurn = 'white';
+      let lastMove = null;
+
+      // Utility functions
+      function sign(x){ return x > 0 ? 1 : x < 0 ? -1 : 0; }
+      function opposite(c){ return c === 'white' ? 'black' : 'white'; }
+      function shuffle(a){ for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }}
+
+      // Build empty board
+      function createBoard(){
+        boardEl.innerHTML = '';
+        for(let r = 0; r < 8; r++){
+          for(let c = 0; c < 8; c++){
+            const sq = document.createElement('div');
+            sq.id = `sq-${r}-${c}`;
+            sq.className = 'square ' + (((r + c) % 2) ? 'dark' : 'light');
+            sq.addEventListener('dragover', e => e.preventDefault());
+            sq.addEventListener('drop', onDrop);
+            boardEl.appendChild(sq);
+          }
+        }
+      }
+
+      // Initialize random game
+      function initGame(){
+        createBoard();
+        const types = ['pawn','rook','knight','bishop','queen','king'];
+        const counts = { pawn:8, rook:2, knight:2, bishop:2, queen:1, king:1 };
+        const whitePieces = [];
+        const blackPieces = [];
+        types.forEach(t => {
+          for(let i = 0; i < counts[t]; i++){
+            whitePieces.push({ type: t, color: 'white' });
+            blackPieces.push({ type: t, color: 'black' });
+          }
+        });
+        const whiteSquares = [];
+        const blackSquares = [];
+        for(let c = 0; c < 8; c++){
+          whiteSquares.push({ r: 6, c });
+          whiteSquares.push({ r: 7, c });
+          blackSquares.push({ r: 1, c });
+          blackSquares.push({ r: 0, c });
+        }
+        shuffle(whiteSquares);
+        shuffle(blackSquares);
+        whitePieces.forEach((p, i) => placePiece(whiteSquares[i].r, whiteSquares[i].c, p.type, p.color));
+        blackPieces.forEach((p, i) => placePiece(blackSquares[i].r, blackSquares[i].c, p.type, p.color));
+        updateTurnInfo();
+      }
+
+      // Piece icons
+      const icons = {
+        white: { pawn:'♙', rook:'♖', knight:'♘', bishop:'♗', queen:'♕', king:'♔' },
+        black: { pawn:'♟', rook:'♜', knight:'♞', bishop:'♝', queen:'♛', king:'♚' }
+      };
+
+      // Place a piece on board
+      function placePiece(r, c, type, color){
+        const span = document.createElement('span');
+        span.className = 'piece';
+        span.textContent = icons[color][type];
+        span.draggable = true;
+        span.dataset.type = type;
+        span.dataset.color = color;
+        span.dataset.r = r;
+        span.dataset.c = c;
+        span.addEventListener('dragstart', onDragStart);
+        document.getElementById(`sq-${r}-${c}`).appendChild(span);
+      }
+
+      // Check clear path for sliding pieces
+      function isPathClear(sr, sc, dr, dc){
+        const stepR = sign(dr - sr);
+        const stepC = sign(dc - sc);
+        let r = sr + stepR, c = sc + stepC;
+        while(r !== dr || c !== dc){
+          if(document.getElementById(`sq-${r}-${c}`).querySelector('.piece')) return false;
+          r += stepR;
+          c += stepC;
+        }
+        return true;
+      }
+
+      // Detect if square attacked
+      function isAttacked(kr, kc, byColor){
+        const pieces = document.querySelectorAll('.piece');
+        for(const p of pieces){
+          if(p.dataset.color === byColor){
+            const sr = +p.dataset.r;
+            const sc = +p.dataset.c;
+            if(isLegal(p, sr, sc, kr, kc, true)) return true;
+          }
+        }
+        return false;
+      }
+
+      // Determine if a move is legal
+      function isLegal(piece, sr, sc, dr, dc, ignoreCheck=false){
+        const type = piece.dataset.type;
+        const color = piece.dataset.color;
+        const dR = dr - sr;
+        const dC = dc - sc;
+        const aR = Math.abs(dR);
+        const aC = Math.abs(dC);
+        const dest = document.getElementById(`sq-${dr}-${dc}`).querySelector('.piece');
+        if(dest && dest.dataset.color === color) return false;
+        switch(type){
+          case 'pawn':{
+            const dir = (color === 'white') ? -1 : 1;
+            // double move
+            if(!piece.dataset.moved && dC === 0 && dR === 2*dir && !dest && isPathClear(sr, sc, dr, dc)) return true;
+            // single move
+            if(dC === 0 && dR === dir && !dest) return true;
+            // capture or en passant
+            if(aC === 1 && dR === dir){
+              if(dest && dest.dataset.color !== color) return true;
+              if(!dest && lastMove && lastMove.doublePawn && lastMove.to[0] === sr && lastMove.to[1] === dc && lastMove.piece.dataset.color !== color) return true;
+            }
+            return false;
+          }
+          case 'rook':
+            return (dR === 0 || dC === 0) && isPathClear(sr, sc, dr, dc);
+          case 'bishop':
+            return (aR === aC) && isPathClear(sr, sc, dr, dc);
+          case 'queen':
+            return ((dR === 0 || dC === 0) || aR === aC) && isPathClear(sr, sc, dr, dc);
+          case 'knight':
+            return (aR === 2 && aC === 1) || (aR === 1 && aC === 2);
+          case 'king':{
+            // castling
+            if(!piece.dataset.moved && aR === 0 && aC === 2 && !ignoreCheck){
+              const rookC = dC > 0 ? 7 : 0;
+              const rookSq = document.getElementById(`sq-${sr}-${rookC}`);
+              const rook = rookSq.querySelector('.piece');
+              if(rook && rook.dataset.type === 'rook' && !rook.dataset.moved && isPathClear(sr, sc, dr, dc) && !isAttacked(sr, sc, opposite(color))){
+                const step = sign(dC);
+                for(let cc = sc + step; cc !== dc; cc += step){
+                  if(isAttacked(sr, cc, opposite(color))) return false;
+                }
+                return true;
+              }
+            }
+            return (aR <= 1 && aC <= 1);
+          }
+        }
+        return false;
+      }
+
+      // Handlers for drag and drop
+      function onDragStart(e){
+        const r = e.target.dataset.r;
+        const c = e.target.dataset.c;
+        e.dataTransfer.setData('text/plain', `${r}-${c}`);
+      }
+
+      function onDrop(e){
+        e.preventDefault();
+        const from = e.dataTransfer.getData('text/plain').split('-').map(Number);
+        const sq = e.target.closest('.square');
+        if(!sq) return;
+        const to = sq.id.split('-').slice(1).map(Number);
+        const piece = document.querySelector(`.piece[data-r="${from[0]}"][data-c="${from[1]}"]`);
+        if(!piece || piece.dataset.color !== currentTurn){ alert('Not your turn!'); return; }
+        if(!isLegal(piece, from[0], from[1], to[0], to[1])){ alert('Illegal move!'); return; }
+        // simulate and check pin
+        const origSq = document.getElementById(`sq-${from[0]}-${from[1]}`);
+        const destSq = sq;
+        const captured = destSq.querySelector('.piece');
+        origSq.removeChild(piece);
+        if(captured) destSq.removeChild(captured);
+        destSq.appendChild(piece);
+        // check king safety
+        const king = document.querySelector(`.piece[data-type="king"][data-color="${currentTurn}"]`);
+        const kr = +king.dataset.r;
+        const kc = +king.dataset.c;
+        if(isAttacked(kr, kc, opposite(currentTurn))){
+          alert('Move leaves king in check!');
+          destSq.removeChild(piece);
+          origSq.appendChild(piece);
+          if(captured) destSq.appendChild(captured);
+          return;
+        }
+        // handle special moves
+        lastMove = { piece, from, to, doublePawn: (piece.dataset.type==='pawn' && Math.abs(to[0]-from[0])===2) };
+        if(piece.dataset.type==='pawn' && Math.abs(to[1]-from[1])===1 && !captured && lastMove.doublePawn){
+          const capSq = document.getElementById(`sq-${from[0]}-${to[1]}`);
+          const cap = capSq.querySelector('.piece');
+          if(cap) capSq.removeChild(cap);
+        }
+        if(piece.dataset.type==='king' && Math.abs(to[1]-from[1])===2){
+          const rookC = to[1]>from[1]?7:0;
+          const rookSq = document.getElementById(`sq-${from[0]}-${rookC}`);
+          const rook = rookSq.querySelector('.piece');
+          rookSq.removeChild(rook);
+          const newC = to[1]>from[1]?to[1]-1:to[1]+1;
+          const newSq = document.getElementById(`sq-${from[0]}-${newC}`);
+          newSq.appendChild(rook);
+          rook.dataset.r = from[0]; rook.dataset.c = newC; rook.dataset.moved = true;
+        }
+        piece.dataset.r = to[0]; piece.dataset.c = to[1]; piece.dataset.moved = true;
+        if(captured && captured.dataset.type==='king') alert('Checkmate!');
+        currentTurn = opposite(currentTurn);
+        updateTurnInfo();
+      }
+
+      function updateTurnInfo(){
+        turnInfo.textContent = `Current turn: ${currentTurn.charAt(0).toUpperCase()+currentTurn.slice(1)}`;
+      }
+
+      // Start
+      initGame();
+    })();
+  </script>
+<br><br><br><br><br>
+  <p style="text-align: center;"><a href="scratch.html"> Back Home </a></p>
+</body>
+</html>

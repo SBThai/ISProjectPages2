@@ -1,0 +1,131 @@
+
+:root {
+    /* complementary colors */
+    --comp-bg: #8a866d86;   
+    --comp-text: maroon;  
+  }
+ 
+  body {
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande',
+                 'Lucida Sans', Arial, sans-serif;
+    background-color: whitesmoke;  
+    color: maroon;                  
+    margin: 0;
+    padding: 0;
+  }
+ 
+
+  #header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: #8a866d86;
+  }
+ 
+  .professional-link {
+    text-decoration: none;
+    font-weight: bold;
+    color: inherit;
+  }
+  .professional-link:hover {
+    text-decoration: underline;
+  }
+ 
+
+#content {
+    text-align: center;
+  }
+ 
+ 
+  #content ul {
+    display: inline-block;   
+    text-align: left;        
+    margin: 0.5em auto;      
+    padding-left: 1em;       
+  }
+ 
+  #content ul ol {
+    display: block;        
+    margin: 1em 0 1em 1.5em;
+    padding: 0;
+    list-style-position: outside;
+  }
+ 
+ 
+  #content li {
+    list-style-position: inside;
+    padding-left: 0.2em;  
+    margin: 0.5em 0; 
+  }
+
+
+ 
+
+  #footer {
+    text-align: center;
+    background-color: var(--comp-bg);
+    color: var(--comp-text);
+  }
+ 
+
+  img.custom-image {
+    max-width: 60%;
+    height: auto;
+    border: 2px solid var(--comp-text);
+  }
+ 
+
+  #tableauViz {
+    text-align: center;            
+  }
+ 
+  #tableauViz .tableauPlaceholder {
+    display: inline-block;          
+    margin: 0 auto;                  
+  }
+ 
+  #tableauViz .tableauPlaceholder object {
+    display: inline-block !important;
+    max-width: 100%;                
+  }
+
+
+ 
+
+
+
+  .video-container {
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+  .video-container iframe {
+    position: absolute;
+    top: 0;
+    left: 50%;               
+    width: 60%;              
+    height: 60%;
+    transform: translateX(-50%); 
+  }
+ 
+ 
+  a {
+    color: var(--comp-text);
+    text-decoration: none;
+  }
+ 
+
+  .btn-outline-primary {
+    border-color: var(--comp-text);
+    color: var(--comp-text);
+  }
+  .btn-outline-primary:hover {
+    background-color: var(--comp-text);
+    color: #fff;
+  }
+
+
+
